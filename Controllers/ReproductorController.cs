@@ -38,12 +38,12 @@ public class ReproductorController : IDisposable
     public void CargarCanciones(IEnumerable<string> rutas)
     {
         string[] rutasValidas = rutas
-            .Where(r => string.Equals(Path.GetExtension(r), ".mp3", StringComparison.OrdinalIgnoreCase))
+            .Where(PlaylistService.EsArchivoAudioValido)
             .ToArray();
 
         if (rutasValidas.Length == 0)
         {
-            _vista.MostrarMensaje("Selecciona al menos un archivo MP3 valido.", "Archivo no valido");
+            _vista.MostrarMensaje("Selecciona al menos un archivo de audio valido.", "Archivo no valido");
             return;
         }
 
@@ -74,6 +74,61 @@ public class ReproductorController : IDisposable
 
         CargarCancionActual();
         _vista.MostrarCanciones(_playlistService.Canciones, _playlistService.IndiceActual);
+    }
+
+    public void QuitarCancion(int indice)
+    {
+        if (!_playlistService.TieneCanciones || indice < 0)
+        {
+            _vista.MostrarMensaje("Selecciona una cancion de la lista para quitarla.", "Sin seleccion");
+            return;
+        }
+
+        bool quitandoActual = indice == _playlistService.IndiceActual;
+        bool estabaReproduciendo = _audioPlayerService.EstaReproduciendo;
+
+        if (quitandoActual)
+        {
+            _audioPlayerService.Detener();
+        }
+
+        if (!_playlistService.QuitarCancion(indice))
+        {
+            return;
+        }
+
+        if (!_playlistService.TieneCanciones)
+        {
+            _vista.MostrarCancionActual(null);
+            _vista.ActualizarProgreso(TimeSpan.Zero, TimeSpan.Zero);
+        }
+        else if (quitandoActual)
+        {
+            CargarCancionActual();
+
+            if (estabaReproduciendo)
+            {
+                Reproducir();
+            }
+        }
+
+        _vista.MostrarCanciones(_playlistService.Canciones, _playlistService.IndiceActual);
+        _vista.ActualizarControles(_playlistService.TieneCanciones);
+    }
+
+    public void LimpiarLista()
+    {
+        if (!_playlistService.TieneCanciones)
+        {
+            return;
+        }
+
+        _audioPlayerService.Detener();
+        _playlistService.Limpiar();
+        _vista.MostrarCanciones(_playlistService.Canciones, _playlistService.IndiceActual);
+        _vista.ActualizarControles(false);
+        _vista.MostrarCancionActual(null);
+        _vista.ActualizarProgreso(TimeSpan.Zero, TimeSpan.Zero);
     }
 
     public void Reproducir()

@@ -7,6 +7,14 @@ public static class DibujoHelper
     public static GraphicsPath CrearRectanguloRedondeado(RectangleF rectangulo, float radio)
     {
         GraphicsPath path = new();
+
+        if (radio <= 0f)
+        {
+            path.AddRectangle(rectangulo);
+            path.CloseFigure();
+            return path;
+        }
+
         float diametro = radio * 2f;
         RectangleF arco = new(rectangulo.Location, new SizeF(diametro, diametro));
 

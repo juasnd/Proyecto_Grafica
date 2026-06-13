@@ -21,14 +21,18 @@ public class FrmReproductor : Form, IReproductorView
     private Label _lblDuracion = null!;
     private Label _lblEstadoLista = null!;
     private RoundButton _btnCargar = null!;
+    private RoundButton _btnQuitar = null!;
+    private RoundButton _btnLimpiar = null!;
     private RoundButton _btnPlay = null!;
     private RoundButton _btnPause = null!;
     private RoundButton _btnStop = null!;
     private RoundButton _btnSiguiente = null!;
     private RoundButton _btnAnterior = null!;
     private RoundButton _btnTema = null!;
+    private RoundButton _btnModoVisual = null!;
     private RoundButton _btnCerrar = null!;
     private RoundButton _btnMinimizar = null!;
+    private RoundButton _btnMaximizar = null!;
     private BarraDeslizante _barraProgreso = null!;
     private BarraDeslizante _barraVolumen = null!;
     private PaletaTema _paleta = null!;
@@ -68,8 +72,8 @@ public class FrmReproductor : Form, IReproductorView
         }
 
         _lblEstadoLista.Text = canciones.Count == 0
-            ? "No hay canciones cargadas"
-            : $"{canciones.Count} cancion(es) en la lista";
+            ? "Agrega canciones para construir la lista"
+            : $"{canciones.Count} cancion(es) en la cola";
 
         _actualizandoLista = false;
     }
@@ -79,7 +83,7 @@ public class FrmReproductor : Form, IReproductorView
         if (cancion is null)
         {
             _lblCancionActual.Text = "Ninguna cancion seleccionada";
-            _lblArtista.Text = "Carga archivos MP3 desde tu computadora";
+            _lblArtista.Text = "Carga archivos de audio desde tu computadora";
             return;
         }
 
@@ -109,6 +113,8 @@ public class FrmReproductor : Form, IReproductorView
         _btnStop.Enabled = hayCanciones;
         _btnSiguiente.Enabled = hayCanciones;
         _btnAnterior.Enabled = hayCanciones;
+        _btnQuitar.Enabled = hayCanciones;
+        _btnLimpiar.Enabled = hayCanciones;
         _barraProgreso.Enabled = hayCanciones;
     }
 
@@ -121,6 +127,12 @@ public class FrmReproductor : Form, IReproductorView
         AplicarTemaPanel(_panelLista, paleta);
         AplicarTemaPanel(_panelVisualizador, paleta);
         AplicarTemaPanel(_panelControles, paleta);
+        _panelVisualizador.ColorFondo = Color.FromArgb(0, paleta.Fondo);
+        _panelVisualizador.ColorBorde = Color.Transparent;
+        _panelControles.ColorFondo = Color.Transparent;
+        _panelControles.ColorBorde = Color.Transparent;
+        _panelControles.ColorAcentoSuperior = Color.Transparent;
+
         AplicarFondosContenedores(paleta);
 
         foreach (Control control in ObtenerControles(this))
@@ -136,14 +148,18 @@ public class FrmReproductor : Form, IReproductorView
         _lstCanciones.ForeColor = paleta.Texto;
 
         AplicarTemaBoton(_btnCargar, true);
+        AplicarTemaBoton(_btnQuitar, false);
+        AplicarTemaBoton(_btnLimpiar, false);
         AplicarTemaBoton(_btnPlay, true);
         AplicarTemaBoton(_btnPause, false);
         AplicarTemaBoton(_btnStop, false);
         AplicarTemaBoton(_btnSiguiente, false);
         AplicarTemaBoton(_btnAnterior, false);
+        AplicarTemaBoton(_btnModoVisual, false);
         AplicarTemaBoton(_btnTema, false);
         AplicarTemaBotonVentana(_btnCerrar, Color.FromArgb(245, 83, 102));
         AplicarTemaBotonVentana(_btnMinimizar, paleta.SuperficieSecundaria);
+        AplicarTemaBotonVentana(_btnMaximizar, paleta.SuperficieSecundaria);
 
         _btnTema.Text = modo == ModoTema.Oscuro ? "Tema: Oscuro" : "Tema: Claro";
         _barraProgreso.ColorPista = paleta.SuperficieSecundaria;
@@ -157,12 +173,13 @@ public class FrmReproductor : Form, IReproductorView
         _barraVolumen.ColorPulgar = paleta.Texto;
 
         _visualizador.ColorFondo = paleta.Fondo;
-        _visualizador.BackColor = paleta.Fondo;
+        _visualizador.BackColor = Color.Transparent;
         _visualizador.ColorLinea = paleta.Borde;
         _visualizador.ColorAcento1 = paleta.AcentoPrincipal;
         _visualizador.ColorAcento2 = paleta.AcentoSecundario;
         _visualizador.ColorAcento3 = paleta.AcentoTerciario;
         _visualizador.ColorTexto = paleta.Texto;
+        ActualizarTextoModoVisual();
 
         Invalidate(true);
     }
@@ -208,15 +225,16 @@ public class FrmReproductor : Form, IReproductorView
             Dock = DockStyle.Fill,
             ColumnCount = 1,
             RowCount = 3,
-            Padding = new Padding(20, 10, 20, 20),
+            Padding = new Padding(0),
             Tag = "fondo"
         };
-        raiz.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
+        raiz.RowStyles.Add(new RowStyle(SizeType.Absolute, 68));
         raiz.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        raiz.RowStyles.Add(new RowStyle(SizeType.Absolute, 148));
+        raiz.RowStyles.Add(new RowStyle(SizeType.Absolute, 132));
         Controls.Add(raiz);
 
         _barraTitulo = CrearBarraTitulo();
+        _barraTitulo.Margin = new Padding(20, 10, 20, 0);
         raiz.Controls.Add(_barraTitulo, 0, 0);
 
         TableLayoutPanel cuerpo = new()
@@ -224,6 +242,7 @@ public class FrmReproductor : Form, IReproductorView
             Dock = DockStyle.Fill,
             ColumnCount = 2,
             RowCount = 1,
+            Margin = new Padding(20, 0, 20, 0),
             Tag = "fondo"
         };
         cuerpo.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 310));
@@ -258,7 +277,7 @@ public class FrmReproductor : Form, IReproductorView
 
         Label subtitulo = new()
         {
-            Text = "Reproductor local MP3 con visualizador FFT",
+            Text = "Audio reactivo en tiempo real",
             AutoSize = true,
             Font = new Font("Segoe UI", 9.5f, FontStyle.Regular),
             Tag = "suave",
@@ -269,9 +288,15 @@ public class FrmReproductor : Form, IReproductorView
         _btnTema.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         _btnTema.Location = new Point(Width - 280, 11);
 
-        _btnMinimizar = CrearBoton("-", 42, 36);
+
+
+        _btnMaximizar = CrearBoton("□", 42, 36);  
+        _btnMaximizar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        _btnMaximizar.Location = new Point(Width - 114, 11);
+
+        _btnMinimizar = CrearBoton("─", 42, 36);  // Nota: cambié "-" por "─"
         _btnMinimizar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-        _btnMinimizar.Location = new Point(Width - 118, 11);
+        _btnMinimizar.Location = new Point(Width - 160, 11);  // ← Cambia esto (estaba en -118)
 
         _btnCerrar = CrearBoton("X", 42, 36);
         _btnCerrar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
@@ -281,29 +306,49 @@ public class FrmReproductor : Form, IReproductorView
         panel.Controls.Add(subtitulo);
         panel.Controls.Add(_btnTema);
         panel.Controls.Add(_btnMinimizar);
+        panel.Controls.Add(_btnMaximizar);
         panel.Controls.Add(_btnCerrar);
 
         panel.Resize += (_, _) =>
         {
-            _btnTema.Location = new Point(panel.Width - 272, 11);
-            _btnMinimizar.Location = new Point(panel.Width - 114, 11);
-            _btnCerrar.Location = new Point(panel.Width - 64, 11);
+            const int margenDerecho = 10;
+            const int anchoBoton = 42;
+            const int separacion = 4;
+
+            _btnCerrar.Location =
+                new Point(panel.Width - anchoBoton - margenDerecho, 11);
+
+            _btnMaximizar.Location =
+                new Point(panel.Width - (anchoBoton * 2) - separacion - margenDerecho, 11);
+
+            _btnMinimizar.Location =
+                new Point(panel.Width - (anchoBoton * 3) - (separacion * 2) - margenDerecho, 11);
+
+            _btnTema.Location =
+                new Point(_btnMinimizar.Left - 160, 11);
         };
 
         return panel;
     }
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        MaximizedBounds = Screen.FromHandle(Handle).WorkingArea;
+    }
+
 
     private PanelTarjeta CrearPanelLista()
     {
         PanelTarjeta panel = new()
         {
             Dock = DockStyle.Fill,
-            Margin = new Padding(0, 8, 14, 8)
+            Margin = new Padding(0, 8, 14, 12),
+            Radio = 10
         };
 
         Label titulo = new()
         {
-            Text = "Biblioteca",
+            Text = "Cola de reproduccion",
             Dock = DockStyle.Top,
             Height = 30,
             Font = new Font("Segoe UI", 15f, FontStyle.Bold)
@@ -311,15 +356,42 @@ public class FrmReproductor : Form, IReproductorView
 
         _lblEstadoLista = new Label
         {
-            Text = "No hay canciones cargadas",
+            Text = "Agrega canciones para construir la lista",
             Dock = DockStyle.Top,
             Height = 26,
             Tag = "suave"
         };
 
-        _btnCargar = CrearBoton("Cargar MP3", 0, 44);
-        _btnCargar.Dock = DockStyle.Top;
-        _btnCargar.Margin = new Padding(0, 8, 0, 14);
+        FlowLayoutPanel acciones = new()
+        {
+            Dock = DockStyle.Top,
+            Height = 104,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            Tag = "superficie"
+        };
+
+        _btnCargar = CrearBoton("Agregar audio", 0, 42);
+        _btnCargar.Width = 260;
+        _btnCargar.Margin = new Padding(0, 8, 0, 4);
+
+        FlowLayoutPanel gestion = new()
+        {
+            Width = 260,
+            Height = 42,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Tag = "superficie"
+        };
+
+        _btnQuitar = CrearBoton("Quitar", 124, 38);
+        _btnQuitar.Margin = new Padding(0, 2, 6, 2);
+        _btnLimpiar = CrearBoton("Limpiar", 124, 38);
+        _btnLimpiar.Margin = new Padding(6, 2, 0, 2);
+        gestion.Controls.Add(_btnQuitar);
+        gestion.Controls.Add(_btnLimpiar);
+        acciones.Controls.Add(_btnCargar);
+        acciones.Controls.Add(gestion);
 
         _lstCanciones = new ListBox
         {
@@ -332,7 +404,7 @@ public class FrmReproductor : Form, IReproductorView
         _lstCanciones.DrawItem += LstCanciones_DrawItem;
 
         panel.Controls.Add(_lstCanciones);
-        panel.Controls.Add(_btnCargar);
+        panel.Controls.Add(acciones);
         panel.Controls.Add(_lblEstadoLista);
         panel.Controls.Add(titulo);
 
@@ -344,7 +416,9 @@ public class FrmReproductor : Form, IReproductorView
         PanelTarjeta panel = new()
         {
             Dock = DockStyle.Fill,
-            Margin = new Padding(14, 8, 0, 8)
+            Margin = new Padding(14, 8, 0, 12),
+            Radio = 10,
+            MostrarBorde = false
         };
 
         TableLayoutPanel layout = new()
@@ -352,7 +426,7 @@ public class FrmReproductor : Form, IReproductorView
             Dock = DockStyle.Fill,
             RowCount = 2,
             ColumnCount = 1,
-            Tag = "superficie"
+            Tag = "fondo"
         };
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -360,7 +434,7 @@ public class FrmReproductor : Form, IReproductorView
         Panel encabezado = new()
         {
             Dock = DockStyle.Fill,
-            Tag = "superficie"
+            Tag = "fondo"
         };
 
         _lblCancionActual = new Label
@@ -374,7 +448,7 @@ public class FrmReproductor : Form, IReproductorView
 
         _lblArtista = new Label
         {
-            Text = "Carga archivos MP3 desde tu computadora",
+            Text = "Carga archivos de audio desde tu computadora",
             AutoEllipsis = true,
             Dock = DockStyle.Top,
             Height = 24,
@@ -402,7 +476,10 @@ public class FrmReproductor : Form, IReproductorView
         PanelTarjeta panel = new()
         {
             Dock = DockStyle.Fill,
-            Margin = new Padding(0, 8, 0, 0)
+            Margin = new Padding(0),
+            Padding = new Padding(24, 8, 24, 16),
+            Radio = 0,
+            MostrarBorde = false
         };
 
         TableLayoutPanel layout = new()
@@ -410,16 +487,16 @@ public class FrmReproductor : Form, IReproductorView
             Dock = DockStyle.Fill,
             RowCount = 2,
             ColumnCount = 1,
-            Tag = "superficie"
+            Tag = "fondo"
         };
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         TableLayoutPanel filaProgreso = new()
         {
             Dock = DockStyle.Fill,
             ColumnCount = 3,
-            Tag = "superficie"
+            Tag = "fondo"
         };
         filaProgreso.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
         filaProgreso.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -455,11 +532,26 @@ public class FrmReproductor : Form, IReproductorView
         TableLayoutPanel filaBotones = new()
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 2,
-            Tag = "superficie"
+            ColumnCount = 3,
+            Tag = "fondo"
         };
-        filaBotones.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70));
-        filaBotones.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
+        filaBotones.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        filaBotones.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        filaBotones.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+
+
+        FlowLayoutPanel modoPanel = new()
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Padding = new Padding(0, 7, 0, 0),
+            Tag = "fondo"
+        };
+
+        _btnModoVisual = CrearBoton("Modo", 150, 38);
+        _btnModoVisual.Margin = new Padding(0, 4, 0, 0);
+        modoPanel.Controls.Add(_btnModoVisual);
 
         FlowLayoutPanel controles = new()
         {
@@ -467,25 +559,31 @@ public class FrmReproductor : Form, IReproductorView
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
             AutoSize = false,
-            Tag = "superficie"
+            Anchor = AnchorStyles.None,
+            Padding = new Padding(0, 3, 0, 0),
+            Tag = "fondo"
         };
 
-        _btnAnterior = CrearBoton("Anterior", 96, 44);
-        _btnPlay = CrearBoton("Play", 92, 44);
-        _btnPause = CrearBoton("Pause", 92, 44);
-        _btnStop = CrearBoton("Stop", 92, 44);
-        _btnSiguiente = CrearBoton("Siguiente", 108, 44);
+        _btnAnterior = CrearBoton("<<", 56, 42);
+        _btnPlay = CrearBoton("▶", 76, 42);
+        _btnPause = CrearBoton("||", 76, 42);
+        _btnStop = CrearBoton("■", 68, 42);
+        _btnSiguiente = CrearBoton(">>", 56, 42);
+
 
         controles.Controls.Add(_btnAnterior);
         controles.Controls.Add(_btnPlay);
         controles.Controls.Add(_btnPause);
         controles.Controls.Add(_btnStop);
         controles.Controls.Add(_btnSiguiente);
+        controles.AutoSize = true;
+        controles.AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
         Panel volumenPanel = new()
         {
             Dock = DockStyle.Fill,
-            Tag = "superficie"
+            Padding = new Padding(0, 4, 0, 0),
+            Tag = "fondo"
         };
 
         Label lblVolumen = new()
@@ -507,8 +605,9 @@ public class FrmReproductor : Form, IReproductorView
         volumenPanel.Controls.Add(_barraVolumen);
         volumenPanel.Controls.Add(lblVolumen);
 
-        filaBotones.Controls.Add(controles, 0, 0);
-        filaBotones.Controls.Add(volumenPanel, 1, 0);
+        filaBotones.Controls.Add(modoPanel, 0, 0);
+        filaBotones.Controls.Add(controles, 1, 0);
+        filaBotones.Controls.Add(volumenPanel, 2, 0);
 
         layout.Controls.Add(filaProgreso, 0, 0);
         layout.Controls.Add(filaBotones, 0, 1);
@@ -529,17 +628,54 @@ public class FrmReproductor : Form, IReproductorView
         };
     }
 
+    private void ActualizarTextoModoVisual()
+    {
+        if (_btnModoVisual is null)
+        {
+            return;
+        }
+
+        _btnModoVisual.Text = _visualizador.Modo switch
+        {
+            ModoVisualizacion.Ondas => "Modo: Ondas",
+            ModoVisualizacion.Particulas => "Modo: Particulas",
+            ModoVisualizacion.Geometria => "Modo: Geometria",
+            _ => "Modo: Espectro"
+        };
+    }
+    private void AlternarMaximizar()
+    {
+        if (WindowState == FormWindowState.Maximized)
+        {
+            WindowState = FormWindowState.Normal;
+            _btnMaximizar.Text = "□";  // Símbolo de maximizar
+        }
+        else
+        {
+            WindowState = FormWindowState.Maximized;
+            _btnMaximizar.Text = "❐";  // Símbolo de restaurar (ventanas superpuestas)
+        }
+    }
+
     private void ConectarEventos()
     {
         _btnCargar.Click += (_, _) => AbrirDialogoCanciones();
+        _btnQuitar.Click += (_, _) => _controller.QuitarCancion(_lstCanciones.SelectedIndex);
+        _btnLimpiar.Click += (_, _) => _controller.LimpiarLista();
         _btnPlay.Click += (_, _) => _controller.Reproducir();
         _btnPause.Click += (_, _) => _controller.Pausar();
         _btnStop.Click += (_, _) => _controller.Detener();
         _btnSiguiente.Click += (_, _) => _controller.Siguiente();
         _btnAnterior.Click += (_, _) => _controller.Anterior();
+        _btnModoVisual.Click += (_, _) =>
+        {
+            _visualizador.CambiarModo();
+            ActualizarTextoModoVisual();
+        };
         _btnTema.Click += (_, _) => _controller.AlternarTema();
         _btnCerrar.Click += (_, _) => Close();
         _btnMinimizar.Click += (_, _) => WindowState = FormWindowState.Minimized;
+        _btnMaximizar.Click += (_, _) => AlternarMaximizar();
 
         _lstCanciones.SelectedIndexChanged += (_, _) =>
         {
@@ -564,8 +700,8 @@ public class FrmReproductor : Form, IReproductorView
     {
         using OpenFileDialog dialogo = new()
         {
-            Title = "Seleccionar canciones MP3",
-            Filter = "Archivos MP3 (*.mp3)|*.mp3",
+            Title = "Seleccionar canciones",
+            Filter = "Audio compatible (*.mp3;*.wav;*.aiff;*.aif;*.wma)|*.mp3;*.wav;*.aiff;*.aif;*.wma|Todos los archivos (*.*)|*.*",
             Multiselect = true
         };
 
@@ -673,7 +809,7 @@ public class FrmReproductor : Form, IReproductorView
     private void BarraTitulo_MouseDown(object? sender, MouseEventArgs e)
     {
         if (e.Button != MouseButtons.Left)
-        {
+        { 
             return;
         }
 

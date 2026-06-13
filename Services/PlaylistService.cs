@@ -19,7 +19,7 @@ public class PlaylistService
 
         foreach (string ruta in rutas)
         {
-            if (!EsArchivoMp3Valido(ruta) || YaExiste(ruta))
+            if (!EsArchivoAudioValido(ruta) || YaExiste(ruta))
             {
                 continue;
             }
@@ -53,6 +53,37 @@ public class PlaylistService
         return true;
     }
 
+    public bool QuitarCancion(int indice)
+    {
+        if (indice < 0 || indice >= _canciones.Count)
+        {
+            return false;
+        }
+
+        _canciones.RemoveAt(indice);
+
+        if (_canciones.Count == 0)
+        {
+            _indiceActual = -1;
+        }
+        else if (indice < _indiceActual)
+        {
+            _indiceActual--;
+        }
+        else if (indice == _indiceActual)
+        {
+            _indiceActual = Math.Min(indice, _canciones.Count - 1);
+        }
+
+        return true;
+    }
+
+    public void Limpiar()
+    {
+        _canciones.Clear();
+        _indiceActual = -1;
+    }
+
     public Cancion? Siguiente()
     {
         if (_canciones.Count == 0)
@@ -75,9 +106,15 @@ public class PlaylistService
         return CancionActual;
     }
 
-    private static bool EsArchivoMp3Valido(string ruta)
+    public static bool EsArchivoAudioValido(string ruta)
     {
-        return File.Exists(ruta) && string.Equals(Path.GetExtension(ruta), ".mp3", StringComparison.OrdinalIgnoreCase);
+        string extension = Path.GetExtension(ruta);
+        return File.Exists(ruta)
+            && (string.Equals(extension, ".mp3", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(extension, ".wav", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(extension, ".aiff", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(extension, ".aif", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(extension, ".wma", StringComparison.OrdinalIgnoreCase));
     }
 
     private bool YaExiste(string ruta)

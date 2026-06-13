@@ -15,6 +15,8 @@ public class PanelTarjeta : Panel
     public int Radio { get; set; }
     public Color ColorFondo { get; set; } = Color.FromArgb(17, 24, 39);
     public Color ColorBorde { get; set; } = Color.FromArgb(42, 55, 84);
+    public Color ColorAcentoSuperior { get; set; } = Color.Transparent;
+    public bool MostrarBorde { get; set; } = true;
 
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -27,7 +29,16 @@ public class PanelTarjeta : Panel
         using Pen borde = new(ColorBorde, 1f);
 
         e.Graphics.FillPath(fondo, path);
-        e.Graphics.DrawPath(borde, path);
+        if (MostrarBorde && ColorBorde.A > 0)
+        {
+            e.Graphics.DrawPath(borde, path);
+        }
+
+        if (ColorAcentoSuperior.A > 0)
+        {
+            using Pen acento = new(ColorAcentoSuperior, 3f);
+            e.Graphics.DrawLine(acento, 0, 1.5f, Width, 1.5f);
+        }
 
         base.OnPaint(e);
     }
