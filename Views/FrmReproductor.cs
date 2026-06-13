@@ -290,7 +290,7 @@ public class FrmReproductor : Form, IReproductorView
 
 
 
-        _btnMaximizar = CrearBoton("□", 42, 36);  
+        _btnMaximizar = CrearBoton("□", 42, 36);
         _btnMaximizar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         _btnMaximizar.Location = new Point(Width - 114, 11);
 
@@ -685,6 +685,15 @@ public class FrmReproductor : Form, IReproductorView
             }
         };
 
+        _lstCanciones.MouseDoubleClick += (_, _) =>
+        {
+            if (_lstCanciones.SelectedIndex >= 0)
+            {
+                _controller.SeleccionarCancion(_lstCanciones.SelectedIndex);
+                _controller.Reproducir();
+            }
+        };
+
         _barraProgreso.ValueChanged += (_, _) =>
         {
             if (!_actualizandoProgreso && _barraProgreso.EstaArrastrando)
@@ -809,7 +818,7 @@ public class FrmReproductor : Form, IReproductorView
     private void BarraTitulo_MouseDown(object? sender, MouseEventArgs e)
     {
         if (e.Button != MouseButtons.Left)
-        { 
+        {
             return;
         }
 
@@ -819,6 +828,11 @@ public class FrmReproductor : Form, IReproductorView
 
     [DllImport("user32.dll")]
     private static extern bool ReleaseCapture();
+
+    private void InitializeComponent()
+    {
+
+    }
 
     [DllImport("user32.dll")]
     private static extern int SendMessage(IntPtr hWnd, int msg, int wParam, int lParam);
