@@ -6,7 +6,7 @@ namespace VisualBeatPlayer.Views;
 
 public class VisualizerControl : Control
 {
-    private const int CantidadParticulas = 90;
+    private const int CantidadParticulas = 125;
 
     private readonly Particula[] _particulas = new Particula[CantidadParticulas];
 
@@ -75,13 +75,13 @@ public class VisualizerControl : Control
 
         if (espectro.PulsoDetectado)
         {
-            _pulso = Math.Max(_pulso, 0.70f);
+            _pulso = Math.Max(_pulso, 0.90f);
         }
 
         ActualizarMetricas();
         ActualizarParticulas();
 
-        _fase += 0.014f + _energiaSuavizada * 0.035f;
+        _fase += 0.016f + _energiaSuavizada * 0.045f + _pulso * 0.010f;
         _fotograma++;
 
         Invalidate();
@@ -148,20 +148,18 @@ public class VisualizerControl : Control
             float velocidad = objetivo > _barrasSuavizadas[i] ? 0.68f : 0.14f;
             _barrasSuavizadas[i] += (objetivo - _barrasSuavizadas[i]) * velocidad;
 
-            // Se conserva el arreglo de picos por compatibilidad, pero ya no se dibuja como puntos.
             _picos[i] += (objetivo - _picos[i]) * 0.30f;
-
             suma += _barrasSuavizadas[i];
         }
 
         _energia = suma / Math.Max(1, _barrasSuavizadas.Length);
-        _energiaSuavizada += (_energia - _energiaSuavizada) * 0.14f;
-        _graves += (graves - _graves) * 0.22f;
-        _medios += (medios - _medios) * 0.18f;
-        _agudos += (agudos - _agudos) * 0.16f;
+        _energiaSuavizada += (_energia - _energiaSuavizada) * 0.15f;
+        _graves += (graves - _graves) * 0.24f;
+        _medios += (medios - _medios) * 0.21f;
+        _agudos += (agudos - _agudos) * 0.19f;
 
-        float golpe = Math.Max(0f, _graves - _energiaSuavizada * 0.86f);
-        _pulso = Math.Max(_pulso * 0.84f, Math.Clamp(golpe * 1.55f, 0f, 1f));
+        float golpe = Math.Max(0f, _graves - _energiaSuavizada * 0.78f);
+        _pulso = Math.Max(_pulso * 0.84f, Math.Clamp(golpe * 1.75f, 0f, 1f));
     }
 
     private float PromedioRango(float inicioNormalizado, float finNormalizado)
@@ -189,6 +187,7 @@ public class VisualizerControl : Control
         }
     }
 
+    // Espectro limpio que ya quedó bien.
     private void DibujarEspectro(Graphics g, Rectangle area)
     {
         int cantidad = _barrasSuavizadas.Length;
@@ -203,8 +202,6 @@ public class VisualizerControl : Control
         for (int i = 0; i < cantidad; i++)
         {
             float valor = Math.Clamp(_barrasSuavizadas[i], 0f, 1f);
-
-            // Curva natural: evita saturación arriba y evita barras demasiado tiesas.
             valor = MathF.Pow(valor, 1.15f);
 
             float alto = 5f + valor * altoMaximo * 0.78f;
@@ -232,36 +229,44 @@ public class VisualizerControl : Control
 
             g.FillPath(brillo, brilloPath);
             g.FillPath(gradiente, barraPath);
-
-            // IMPORTANTE:
-            // Antes aquí se dibujaban picos con FillEllipse.
-            // Eso era lo que se veía como puntos/partículas desordenadas encima de las barras.
         }
     }
 
+    // Más frenético, pero manteniendo el estilo sencillo del ZIP.
     private void DibujarOndas(Graphics g, Rectangle area)
     {
-        int puntos = Math.Max(96, area.Width / 8);
+        int puntos = Math.Max(120, area.Width / 6);
         float centroY = area.Height * 0.5f;
 
-        for (int capa = 0; capa < 3; capa++)
+        for (int capa = 0; capa < 4; capa++)
         {
             using GraphicsPath path = new();
-            Color color = capa == 0 ? ColorAcento1 : capa == 1 ? ColorAcento2 : ColorAcento3;
-            float amplitud = (28f + capa * 18f) * (0.22f + _energiaSuavizada * 1.35f);
-            float frecuencia = 1.6f + capa * 0.58f + _agudos * 1.0f;
-            float desplazamiento = _fase * (1.0f + capa * 0.28f);
+            Color color = capa switch
+            {
+                0 => ColorAcento1,
+                1 => ColorAcento2,
+                2 => DibujoHelper.Mezclar(ColorAcento2, ColorAcento3, 0.45f),
+                _ => ColorAcento3
+            };
+
+            float amplitud = (32f + capa * 17f) * (0.26f + _energiaSuavizada * 1.65f + _graves * 0.48f + _pulso * 0.16f);
+            float frecuencia = 1.65f + capa * 0.60f + _agudos * 1.18f;
+            float desplazamiento = _fase * (1.12f + capa * 0.32f);
+            float offset = (capa - 1.5f) * (5f + _medios * 18f);
 
             for (int i = 0; i < puntos; i++)
             {
                 float t = (float)i / (puntos - 1);
                 float x = t * area.Width;
                 float envolvente = MathF.Sin(MathF.PI * t);
-                float banda = _barrasSuavizadas[Math.Min(_barrasSuavizadas.Length - 1, (int)(t * _barrasSuavizadas.Length))];
+                int indiceBanda = Math.Min(_barrasSuavizadas.Length - 1, (int)(t * _barrasSuavizadas.Length));
+                float banda = MathF.Pow(_barrasSuavizadas[indiceBanda], 0.62f);
 
-                float y = centroY
+                float y = centroY + offset
                     + MathF.Sin(t * MathF.Tau * frecuencia + desplazamiento) * amplitud * envolvente
-                    + MathF.Cos(t * MathF.Tau * (frecuencia * 0.38f) - desplazamiento) * amplitud * 0.26f * banda;
+                    + MathF.Cos(t * MathF.Tau * (frecuencia * 0.52f) - desplazamiento * 1.15f) * amplitud * 0.42f * banda
+                    + MathF.Sin(t * MathF.Tau * 6.2f + _fase * 1.05f + capa) * _medios * 10f * envolvente
+                    + MathF.Cos(t * MathF.Tau * 10.0f - _fase * 0.60f) * _agudos * 4f * envolvente;
 
                 if (i == 0)
                 {
@@ -274,57 +279,110 @@ public class VisualizerControl : Control
                 }
             }
 
-            using Pen pen = new(Color.FromArgb(105 - capa * 22, color), 2.0f + _pulso * 1.8f);
+            using Pen sombra = new(Color.FromArgb(20 + (int)(_pulso * 20), color), 5f + _pulso * 2f)
+            {
+                StartCap = LineCap.Round,
+                EndCap = LineCap.Round,
+                LineJoin = LineJoin.Round
+            };
+
+            using Pen pen = new(Color.FromArgb(112 - capa * 12, color), 2.0f + _pulso * 1.5f + capa * 0.18f)
+            {
+                StartCap = LineCap.Round,
+                EndCap = LineCap.Round,
+                LineJoin = LineJoin.Round
+            };
+
+            g.DrawPath(sombra, path);
             g.DrawPath(pen, path);
         }
     }
 
+    // Más frenético: más partículas, más expansión, más velocidad y más conexiones.
     private void DibujarParticulas(Graphics g, Rectangle area)
     {
-        float escala = Math.Min(area.Width, area.Height) * 0.42f;
+        float escalaX = area.Width * 0.44f;
+        float escalaY = area.Height * 0.44f;
         float centroX = area.Width * 0.5f;
         float centroY = area.Height * 0.5f;
 
-        using Pen linea = new(Color.FromArgb(16 + (int)(_pulso * 34), ColorAcento1), 1f);
+        using Pen lineaCentro = new(Color.FromArgb(22 + (int)(_pulso * 55), ColorAcento1), 1f);
+        using Pen lineaVecina = new(Color.FromArgb(10 + (int)(_energiaSuavizada * 42), ColorAcento3), 1f);
 
         for (int i = 0; i < _particulas.Length; i++)
         {
             Particula p = _particulas[i];
 
-            float x = centroX + p.X * escala;
-            float y = centroY + p.Y * escala;
+            float x = centroX + p.X * escalaX;
+            float y = centroY + p.Y * escalaY;
 
-            float tamano = 2.0f + p.Intensidad * 6.5f + _pulso * 2.8f;
-            Color color = ColorPorIndice(i, _particulas.Length);
-
-            if (i % 12 == 0)
+            if (i % 7 == 0)
             {
-                g.DrawLine(linea, centroX, centroY, x, y);
+                g.DrawLine(lineaCentro, centroX, centroY, x, y);
             }
 
-            using SolidBrush brush = new(Color.FromArgb(62 + (int)(p.Intensidad * 145), color));
+            if (i > 0 && i % 3 == 0)
+            {
+                Particula anterior = _particulas[i - 1];
+                float ax = centroX + anterior.X * escalaX;
+                float ay = centroY + anterior.Y * escalaY;
+
+                if (Distancia(x, y, ax, ay) < Math.Min(area.Width, area.Height) * 0.17f)
+                {
+                    g.DrawLine(lineaVecina, ax, ay, x, y);
+                }
+            }
+        }
+
+        float nucleo = 16f + _graves * 46f + _pulso * 22f;
+        using SolidBrush nucleoBrush = new(Color.FromArgb(55 + (int)(_pulso * 85), ColorAcento2));
+        g.FillEllipse(nucleoBrush, centroX - nucleo / 2f, centroY - nucleo / 2f, nucleo, nucleo);
+
+        for (int i = 0; i < _particulas.Length; i++)
+        {
+            Particula p = _particulas[i];
+
+            float x = centroX + p.X * escalaX;
+            float y = centroY + p.Y * escalaY;
+
+            float tamano = 2.1f + p.Intensidad * 8.2f + _pulso * 3.8f;
+            Color color = ColorPorIndice(i, _particulas.Length);
+
+            using SolidBrush halo = new(Color.FromArgb(14 + (int)(p.Intensidad * 42) + (int)(_pulso * 20), color));
+            g.FillEllipse(halo, x - tamano * 1.8f, y - tamano * 1.8f, tamano * 3.6f, tamano * 3.6f);
+
+            using SolidBrush brush = new(Color.FromArgb(78 + (int)(p.Intensidad * 145), color));
             g.FillEllipse(brush, x - tamano / 2f, y - tamano / 2f, tamano, tamano);
         }
     }
 
+    // Más frenético: más capas, rotación alternada, rayos y deformación con bandas.
     private void DibujarGeometria(Graphics g, Rectangle area)
     {
         float centroX = area.Width * 0.5f;
         float centroY = area.Height * 0.5f;
-        int capas = 7;
+        int capas = 8;
 
         for (int capa = capas; capa >= 1; capa--)
         {
             int lados = 3 + capa;
-            float radioBase = Math.Min(area.Width, area.Height) * (0.07f + capa * 0.047f);
-            float radio = radioBase * (1f + _graves * 0.42f + _pulso * 0.18f);
-            float rotacion = _fase * (0.38f + capa * 0.07f);
+            float radioBase = Math.Min(area.Width, area.Height) * (0.052f + capa * 0.040f);
+            float radio = radioBase * (1f + _graves * 0.46f + _pulso * 0.18f);
+            float rotacion = _fase * (0.42f + capa * 0.065f) * (capa % 2 == 0 ? 1f : -1f);
             PointF[] puntos = new PointF[lados];
 
             for (int i = 0; i < lados; i++)
             {
                 float angulo = rotacion + MathF.Tau * i / lados;
-                float deformacion = 1f + MathF.Sin(_fase * 1.8f + capa + i * 1.35f) * _medios * 0.18f;
+                float indice = (float)i / lados;
+                int indiceBanda = Math.Min(_barrasSuavizadas.Length - 1, (int)(indice * _barrasSuavizadas.Length));
+                float banda = MathF.Pow(_barrasSuavizadas[indiceBanda], 0.58f);
+
+                float deformacion = 1f
+                    + MathF.Sin(_fase * 1.9f + capa + i * 1.35f) * _medios * 0.22f
+                    + MathF.Cos(_fase * 1.25f + i * 1.75f) * _agudos * 0.08f
+                    + banda * 0.11f
+                    + _pulso * 0.035f;
 
                 float x = centroX + MathF.Cos(angulo) * radio * deformacion;
                 float y = centroY + MathF.Sin(angulo) * radio * deformacion;
@@ -333,13 +391,53 @@ public class VisualizerControl : Control
             }
 
             Color color = ColorPorIndice(capa, capas);
-            using Pen pen = new(Color.FromArgb(50 + capa * 16, color), 1.3f + _agudos * 2.2f);
+
+            using Pen brillo = new(Color.FromArgb(14 + (int)(_pulso * 30), color), 3.5f + _pulso * 2f)
+            {
+                LineJoin = LineJoin.Round
+            };
+
+            using Pen pen = new(Color.FromArgb(46 + capa * 17, color), 1.2f + _agudos * 2.0f + _pulso * 0.5f)
+            {
+                LineJoin = LineJoin.Round
+            };
+
+            g.DrawPolygon(brillo, puntos);
             g.DrawPolygon(pen, puntos);
         }
 
-        float nucleo = 18f + _energiaSuavizada * 60f + _pulso * 18f;
-        using SolidBrush brush = new(Color.FromArgb(105, ColorAcento2));
+        DibujarRayosGeometricos(g, area);
+
+        float nucleo = 18f + _energiaSuavizada * 55f + _pulso * 20f;
+        using SolidBrush brush = new(Color.FromArgb(120 + (int)(_pulso * 70), ColorAcento2));
         g.FillEllipse(brush, centroX - nucleo / 2f, centroY - nucleo / 2f, nucleo, nucleo);
+    }
+
+    private void DibujarRayosGeometricos(Graphics g, Rectangle area)
+    {
+        float centroX = area.Width * 0.5f;
+        float centroY = area.Height * 0.5f;
+        float radioBase = Math.Min(area.Width, area.Height);
+        int rayos = 16;
+
+        using Pen pen = new(Color.FromArgb(14 + (int)(_pulso * 42), ColorAcento1), 1f);
+
+        for (int i = 0; i < rayos; i++)
+        {
+            float t = (float)i / rayos;
+            float banda = _barrasSuavizadas[Math.Min(_barrasSuavizadas.Length - 1, (int)(t * _barrasSuavizadas.Length))];
+            float angulo = _fase * 1.2f + t * MathF.Tau;
+
+            float r1 = radioBase * 0.06f;
+            float r2 = radioBase * (0.23f + banda * 0.16f + _pulso * 0.035f);
+
+            float x1 = centroX + MathF.Cos(angulo) * r1;
+            float y1 = centroY + MathF.Sin(angulo) * r1;
+            float x2 = centroX + MathF.Cos(angulo) * r2;
+            float y2 = centroY + MathF.Sin(angulo) * r2;
+
+            g.DrawLine(pen, x1, y1, x2, y2);
+        }
     }
 
     private void DibujarEstadoIdle(Graphics g, Rectangle area)
@@ -378,10 +476,17 @@ public class VisualizerControl : Control
         for (int i = 0; i < _particulas.Length; i++)
         {
             float t = (float)i / _particulas.Length;
-            float angulo = t * MathF.Tau * 4.0f;
+            float angulo = t * MathF.Tau * 8.0f;
 
-            float radioBase = 0.22f + 0.70f * t;
-            float variacion = 0.92f + (float)rng.NextDouble() * 0.16f;
+            float radioBase = (i % 4) switch
+            {
+                0 => 0.26f,
+                1 => 0.48f,
+                2 => 0.68f,
+                _ => 0.84f
+            };
+
+            float exc = 0.50f + (float)rng.NextDouble() * 0.55f;
 
             _particulas[i] = new Particula
             {
@@ -389,13 +494,13 @@ public class VisualizerControl : Control
                 Radio = radioBase,
                 RadioBase = radioBase,
                 RadioA = radioBase,
-                RadioB = radioBase * variacion,
-                Excentricidad = variacion,
-                Velocidad = 0.0012f + (i % 7) * 0.00025f,
+                RadioB = radioBase * exc,
+                Excentricidad = exc,
+                Velocidad = 0.00155f + (i % 11) * 0.00032f,
                 Fase = t * MathF.Tau,
                 Intensidad = 0f,
                 X = MathF.Cos(angulo) * radioBase,
-                Y = MathF.Sin(angulo) * radioBase * variacion
+                Y = MathF.Sin(angulo) * radioBase * exc
             };
         }
     }
@@ -407,30 +512,42 @@ public class VisualizerControl : Control
         for (int i = 0; i < n; i++)
         {
             int indiceBanda = i * _barrasSuavizadas.Length / n;
-            float banda = MathF.Pow(_barrasSuavizadas[indiceBanda], 0.70f);
+            float banda = MathF.Pow(_barrasSuavizadas[indiceBanda], 0.58f);
 
             Particula p = _particulas[i];
 
-            float velocidadActual = p.Velocidad * (0.55f + _energiaSuavizada * 1.75f + _graves * 0.80f);
+            float velocidadActual = p.Velocidad * (0.70f + _energiaSuavizada * 2.6f + _graves * 1.35f + banda * 1.4f);
             p.Angulo += velocidadActual;
 
-            float expansion = _pulso * 0.16f
-                + banda * 0.10f
-                + MathF.Sin(_fase * 1.1f + p.Fase) * _medios * 0.05f;
+            float expansionA = _pulso * 0.32f
+                             + MathF.Sin(_fase * 1.45f + p.Fase) * _medios * 0.12f
+                             + banda * 0.15f;
 
-            float objetivoA = Math.Clamp(p.RadioBase + expansion, 0f, 1f);
-            float objetivoB = Math.Clamp(p.RadioBase * p.Excentricidad + expansion * 0.86f, 0f, 1f);
+            float expansionB = _pulso * 0.38f
+                             + MathF.Cos(_fase * 1.25f + p.Fase) * _graves * 0.16f
+                             + banda * 0.12f;
 
-            p.RadioA += (objetivoA - p.RadioA) * (objetivoA > p.RadioA ? 0.26f : 0.10f);
-            p.RadioB += (objetivoB - p.RadioB) * (objetivoB > p.RadioB ? 0.26f : 0.10f);
+            float objetivoA = Math.Clamp(p.RadioBase + expansionA, 0f, 1.02f);
+            float objetivoB = Math.Clamp(p.RadioBase * p.Excentricidad + expansionB, 0f, 1.02f);
+
+            p.RadioA += (objetivoA - p.RadioA) * (objetivoA > p.RadioA ? 0.42f : 0.12f);
+            p.RadioB += (objetivoB - p.RadioB) * (objetivoB > p.RadioB ? 0.42f : 0.12f);
 
             p.X = MathF.Cos(p.Angulo) * p.RadioA;
             p.Y = MathF.Sin(p.Angulo) * p.RadioB;
 
-            p.Intensidad += (banda - p.Intensidad) * 0.24f;
+            p.Intensidad += (banda - p.Intensidad) * 0.34f;
 
             _particulas[i] = p;
         }
+    }
+
+    private static float Distancia(float x1, float y1, float x2, float y2)
+    {
+        float dx = x1 - x2;
+        float dy = y1 - y2;
+
+        return MathF.Sqrt(dx * dx + dy * dy);
     }
 
     private Color ColorPorIndice(int indice, int total)
