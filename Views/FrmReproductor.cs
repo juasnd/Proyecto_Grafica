@@ -147,16 +147,16 @@ public class FrmReproductor : Form, IReproductorView
         _lstCanciones.BackColor = paleta.Superficie;
         _lstCanciones.ForeColor = paleta.Texto;
 
-        AplicarTemaBoton(_btnCargar, true);
-        AplicarTemaBoton(_btnQuitar, false);
-        AplicarTemaBoton(_btnLimpiar, false);
-        AplicarTemaBoton(_btnPlay, true);
-        AplicarTemaBoton(_btnPause, false);
-        AplicarTemaBoton(_btnStop, false);
-        AplicarTemaBoton(_btnSiguiente, false);
-        AplicarTemaBoton(_btnAnterior, false);
-        AplicarTemaBoton(_btnModoVisual, false);
-        AplicarTemaBoton(_btnTema, false);
+        AplicarTemaBoton(_btnCargar, true, modo);
+        AplicarTemaBoton(_btnQuitar, false, modo);
+        AplicarTemaBoton(_btnLimpiar, false, modo);
+        AplicarTemaBoton(_btnPlay, true, modo);
+        AplicarTemaBoton(_btnPause, false, modo);
+        AplicarTemaBoton(_btnStop, false, modo);
+        AplicarTemaBoton(_btnSiguiente, false, modo);
+        AplicarTemaBoton(_btnAnterior, false, modo);
+        AplicarTemaBoton(_btnModoVisual, false, modo);
+        AplicarTemaBoton(_btnTema, false, modo);
         AplicarTemaBotonVentana(_btnCerrar, Color.FromArgb(245, 83, 102));
         AplicarTemaBotonVentana(_btnMinimizar, paleta.SuperficieSecundaria);
         AplicarTemaBotonVentana(_btnMaximizar, paleta.SuperficieSecundaria);
@@ -756,12 +756,22 @@ public class FrmReproductor : Form, IReproductorView
         panel.BackColor = paleta.Fondo;
     }
 
-    private void AplicarTemaBoton(RoundButton boton, bool principal)
+    private void AplicarTemaBoton(RoundButton boton, bool principal, ModoTema modo)
     {
-        boton.ColorFondo = principal ? _paleta.AcentoPrincipal : _paleta.SuperficieSecundaria;
-        boton.ColorHover = principal ? _paleta.AcentoSecundario : Color.FromArgb(70, _paleta.AcentoPrincipal);
-        boton.ColorTexto = principal ? Color.FromArgb(8, 13, 24) : _paleta.Texto;
-        boton.ColorBorde = principal ? Color.Transparent : _paleta.Borde;
+        if(modo == ModoTema.Claro)
+        {
+            boton.ColorFondo = principal ? _paleta.AcentoTerciario : _paleta.SuperficieSecundaria;
+            boton.ColorHover = principal ? _paleta.AcentoSecundario : _paleta.Superficie;
+            boton.ColorTexto = principal ? Color.FromArgb(8, 13, 24) : _paleta.Texto;
+            boton.ColorBorde = principal ? Color.Transparent : _paleta.Borde;
+        }
+        else
+        {
+            boton.ColorFondo = principal ? _paleta.AcentoPrincipal : _paleta.SuperficieSecundaria;
+            boton.ColorHover = principal ? _paleta.AcentoSecundario : _paleta.Superficie;
+            boton.ColorTexto = principal ? Color.FromArgb(8, 13, 24) : _paleta.Texto;
+            boton.ColorBorde = principal ? Color.Transparent : _paleta.Borde;
+        }
         boton.BackColor = boton.Parent?.BackColor ?? _paleta.Superficie;
         boton.Invalidate();
     }

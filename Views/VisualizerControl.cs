@@ -36,6 +36,8 @@ public class VisualizerControl : Control
     public Color ColorAcento3 { get; set; } = Color.FromArgb(177, 96, 255);
     public Color ColorTexto { get; set; } = Color.FromArgb(237, 244, 255);
 
+
+
     public void CambiarModo()
     {
         Modo = Modo switch
@@ -391,6 +393,17 @@ public class VisualizerControl : Control
         return t < 0.5f
             ? DibujoHelper.Mezclar(ColorAcento1, ColorAcento2, t * 2f)
             : DibujoHelper.Mezclar(ColorAcento2, ColorAcento3, (t - 0.5f) * 2f);
+    }
+
+    public void AplicarTema(PaletaTema paleta)
+    {
+        ColorFondo = paleta.Fondo;
+        ColorLinea = paleta.Borde;
+        ColorAcento1 = paleta.AcentoPrincipal;
+        ColorAcento2 = paleta.AcentoSecundario;
+        ColorAcento3 = paleta.AcentoTerciario;
+        ColorTexto = paleta.Texto;
+        Invalidate();
     }
 
     private struct Particula

@@ -35,9 +35,9 @@ public class ThemeService
                 Texto = Color.FromArgb(24, 31, 44),
                 TextoSuave = Color.FromArgb(92, 104, 122),
                 Borde = Color.FromArgb(207, 220, 235),
-                AcentoPrincipal = Color.FromArgb(0, 164, 214),
-                AcentoSecundario = Color.FromArgb(33, 210, 161),
-                AcentoTerciario = Color.FromArgb(125, 96, 255),
+                AcentoPrincipal = Color.FromArgb(97, 15, 11),   
+                AcentoSecundario = Color.FromArgb(255, 40, 21),   
+                AcentoTerciario = Color.FromArgb(255, 167, 3),  
                 Sombra = Color.FromArgb(30, 97, 118, 140)
             };
         }
