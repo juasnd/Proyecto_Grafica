@@ -6,11 +6,14 @@ public class AudioAnalyzerService
 {
     private const int TamanoFft = 4096;
     private const double FrecuenciaMinimaVisual = 40.0;
-    private const double FrecuenciaMaximaVisual = 20000.0;
-    private const double PisoDecibeles = -90.0;
-    private const double TechoDecibeles = -30.0;
+
+    // 20 kHz hacía que las últimas barras se vieran tiesas porque muchas canciones casi no tienen energía útil ahí.
+    private const double FrecuenciaMaximaVisual = 14000.0;
+
+    private const double PisoDecibeles = -80.0;
+    private const double TechoDecibeles = -18.0;
     private const double DuracionHistorialEnergiaSegundos = 0.5;
-    private const double UmbralPulso = 1.5;
+    private const double UmbralPulso = 1.45;
     private const double EnergiaMinimaPulso = 0.0005;
 
     private readonly object _candado = new();
@@ -91,7 +94,7 @@ public class AudioAnalyzerService
             estadisticasTiempo.Rms,
             CalcularEnergiaEspectral(fft, sampleRate, 0.0, 200.0),
             CalcularEnergiaEspectral(fft, sampleRate, 200.0, 2000.0),
-            CalcularEnergiaEspectral(fft, sampleRate, 2000.0, 20000.0),
+            CalcularEnergiaEspectral(fft, sampleRate, 2000.0, 14000.0),
             pulsoDetectado,
             promedioMovil);
     }
@@ -131,6 +134,7 @@ public class AudioAnalyzerService
             if (muestrasDisponibles < TamanoFft)
             {
                 int inicioDestino = TamanoFft - muestrasDisponibles;
+
                 for (int i = 0; i < muestrasDisponibles; i++)
                 {
                     resultado[inicioDestino + i] = _bufferCircular[i];
@@ -140,6 +144,7 @@ public class AudioAnalyzerService
             }
 
             int inicio = _posicionEscritura - TamanoFft;
+
             if (inicio < 0)
             {
                 inicio += _bufferCircular.Length;
@@ -221,6 +226,7 @@ public class AudioAnalyzerService
         }
 
         int indiceInvertido = 0;
+
         for (int i = 1; i < n; i++)
         {
             int bit = n >> 1;
@@ -270,6 +276,7 @@ public class AudioAnalyzerService
 
                     double siguienteReal = giroReal * raizReal - giroImaginario * raizImaginaria;
                     double siguienteImaginario = giroReal * raizImaginaria + giroImaginario * raizReal;
+
                     giroReal = siguienteReal;
                     giroImaginario = siguienteImaginario;
                 }
@@ -284,8 +291,10 @@ public class AudioAnalyzerService
     {
         double[] frecuencias = new double[cantidadBarras];
         double[] magnitudes = new double[cantidadBarras];
+
         double nyquist = sampleRate / 2.0;
         double frecuenciaMaxima = Math.Min(FrecuenciaMaximaVisual, nyquist * 0.92);
+
         double logMin = Math.Log10(FrecuenciaMinimaVisual);
         double logMax = Math.Log10(Math.Max(FrecuenciaMinimaVisual + 1.0, frecuenciaMaxima));
 
@@ -293,6 +302,7 @@ public class AudioAnalyzerService
         {
             double tInicio = (double)barra / cantidadBarras;
             double tFin = (double)(barra + 1) / cantidadBarras;
+
             double frecuenciaInicio = Math.Pow(10.0, logMin + (logMax - logMin) * tInicio);
             double frecuenciaFin = Math.Pow(10.0, logMin + (logMax - logMin) * tFin);
             double frecuenciaCentral = Math.Sqrt(frecuenciaInicio * frecuenciaFin);
@@ -314,24 +324,32 @@ public class AudioAnalyzerService
             }
 
             double rmsBanda = cantidad == 0 ? 0.0 : Math.Sqrt(sumaCuadrados / cantidad);
-            double magnitud = rmsBanda * 0.65 + maximo * 0.35;
+            double magnitud = rmsBanda * 0.72 + maximo * 0.28;
             magnitud *= ObtenerPesoFrecuencia(frecuenciaCentral);
 
             double decibeles = 20.0 * Math.Log10(magnitud + 0.000000001);
             double normalizado = (decibeles - PisoDecibeles) / (TechoDecibeles - PisoDecibeles);
 
             frecuencias[barra] = frecuenciaCentral;
-            magnitudes[barra] = Math.Clamp(Math.Pow(Math.Clamp(normalizado, 0.0, 1.0), 0.58), 0.0, 1.0);
+            magnitudes[barra] = Math.Clamp(
+                Math.Pow(Math.Clamp(normalizado, 0.0, 1.0), 0.70),
+                0.0,
+                1.0);
         }
 
         return (frecuencias, magnitudes);
     }
 
-    private static double CalcularEnergiaEspectral(MuestraCompleja[] fft, int sampleRate, double frecuenciaInicio, double frecuenciaFin)
+    private static double CalcularEnergiaEspectral(
+        MuestraCompleja[] fft,
+        int sampleRate,
+        double frecuenciaInicio,
+        double frecuenciaFin)
     {
         double nyquist = sampleRate / 2.0;
         double inicioSeguro = Math.Clamp(frecuenciaInicio, 0.0, nyquist);
         double finSeguro = Math.Clamp(frecuenciaFin, inicioSeguro, nyquist);
+
         int binInicio = Math.Max(1, FrecuenciaABin(inicioSeguro, sampleRate));
         int binFin = Math.Max(binInicio, FrecuenciaABin(finSeguro, sampleRate));
         binFin = Math.Min(binFin, fft.Length / 2 - 1);
@@ -362,20 +380,25 @@ public class AudioAnalyzerService
     {
         if (frecuencia < 120.0)
         {
-            return 1.32;
+            return 1.28;
         }
 
         if (frecuencia < 600.0)
         {
-            return 1.18;
+            return 1.14;
         }
 
         if (frecuencia < 2500.0)
         {
-            return 1.08;
+            return 1.04;
         }
 
-        return 0.96;
+        if (frecuencia < 9000.0)
+        {
+            return 0.96;
+        }
+
+        return 0.88;
     }
 
     private static MuestraCompleja Multiplicar(MuestraCompleja muestra, double real, double imaginaria)

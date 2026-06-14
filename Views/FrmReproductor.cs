@@ -44,7 +44,7 @@ public class FrmReproductor : Form, IReproductorView
         _controller = new ReproductorController(this);
         _temporizador = new System.Windows.Forms.Timer
         {
-            Interval = 33
+            Interval = 24
         };
         _temporizador.Tick += Temporizador_Tick;
 
