@@ -53,14 +53,23 @@ public class VisualizerControl : Control
 
     public void ActualizarEspectro(AudioSpectrumData espectro)
     {
-        if (espectro.Frecuencias.Length != _barras.Length)
+        if (espectro.Magnitudes.Length != _barras.Length)
         {
-            _barras = new float[espectro.Frecuencias.Length];
-            _barrasSuavizadas = new float[espectro.Frecuencias.Length];
-            _picos = new float[espectro.Frecuencias.Length];
+            _barras = new float[espectro.Magnitudes.Length];
+            _barrasSuavizadas = new float[espectro.Magnitudes.Length];
+            _picos = new float[espectro.Magnitudes.Length];
         }
 
-        Array.Copy(espectro.Frecuencias, _barras, espectro.Frecuencias.Length);
+        for (int i = 0; i < espectro.Magnitudes.Length; i++)
+        {
+            _barras[i] = (float)Math.Clamp(espectro.Magnitudes[i], 0.0, 1.0);
+        }
+
+        if (espectro.PulsoDetectado)
+        {
+            _pulso = Math.Max(_pulso, 0.85f);
+        }
+
         ActualizarMetricas();
         ActualizarParticulas();
         _fase += 0.018f + _energiaSuavizada * 0.055f;

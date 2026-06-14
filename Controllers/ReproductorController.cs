@@ -6,6 +6,8 @@ namespace VisualBeatPlayer.Controllers;
 
 public class ReproductorController : IDisposable
 {
+    private const int CantidadBarrasVisualizador = 96;
+
     private readonly IReproductorView _vista;
     private readonly PlaylistService _playlistService;
     private readonly AudioAnalyzerService _audioAnalyzerService;
@@ -222,7 +224,7 @@ public class ReproductorController : IDisposable
 
     public AudioSpectrumData ObtenerEspectro()
     {
-        return _audioAnalyzerService.ObtenerEspectro(72);
+        return _audioAnalyzerService.ObtenerEspectro(CantidadBarrasVisualizador);
     }
 
     public void Dispose()

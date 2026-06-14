@@ -39,7 +39,6 @@ Desde Visual Studio 2022:
 2. Ir a `Herramientas > Administrador de paquetes NuGet > Administrar paquetes NuGet para la solucion`.
 3. Instalar o restaurar:
    - `NAudio` version `2.2.1`
-   - `MathNet.Numerics` version `5.0.0`
 
 Desde consola:
 
@@ -67,7 +66,7 @@ dotnet restore
 
 `AudioPlayerService` reproduce el MP3 con NAudio. Mientras el audio suena, un proveedor personalizado copia las muestras reales que pasan por la salida de audio y las envia a `AudioAnalyzerService`.
 
-`AudioAnalyzerService` guarda las muestras recientes en un buffer circular. En cada actualizacion toma 4096 muestras, aplica una ventana Hann para suavizar cortes, ejecuta `Fourier.Forward` de MathNet.Numerics y convierte la magnitud de las frecuencias en 72 barras logaritmicas.
+`AudioAnalyzerService` guarda las muestras recientes en un buffer circular. En cada actualizacion toma 4096 muestras, calcula energia total y RMS, aplica una ventana Hann y ejecuta una FFT manual Cooley-Tukey radix-2 escrita dentro del proyecto. Despues calcula magnitudes por bandas logaritmicas, energia de bajos, medios y agudos, y detecta pulsos ritmicos comparando la energia actual contra un promedio movil de 0.5 segundos.
 
 `VisualizerControl` recibe esas barras, las suaviza visualmente y las dibuja con `Graphics`: gradientes, brillo, base luminosa y animacion de espera cuando no hay musica.
 
