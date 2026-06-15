@@ -23,6 +23,7 @@ public class VisualizerControl : Control
     private float _fase;
     private int _fotograma;
 
+
     public VisualizerControl()
     {
         SetStyle(
@@ -45,6 +46,9 @@ public class VisualizerControl : Control
     public Color ColorAcento2 { get; set; } = Color.FromArgb(54, 235, 161);
     public Color ColorAcento3 { get; set; } = Color.FromArgb(177, 96, 255);
     public Color ColorTexto { get; set; } = Color.FromArgb(237, 244, 255);
+    public enum EstadoVisualizador { Reproduciendo, Pausado, Detenido }
+    public EstadoVisualizador Estado { get; set; } = EstadoVisualizador.Reproduciendo;
+    //distinción entre pausado y detenido para congelar o reiniciar animaciones
 
     public void CambiarModo()
     {
@@ -61,6 +65,19 @@ public class VisualizerControl : Control
 
     public void ActualizarEspectro(AudioSpectrumData espectro)
     {
+        if (Estado == EstadoVisualizador.Pausado)
+            return; // Congela el frame actual
+
+        if (Estado == EstadoVisualizador.Detenido)
+        {
+            // Decae hacia cero → muestra idle naturalmente
+            Array.Clear(_barras, 0, _barras.Length);
+            ActualizarMetricas();
+            Invalidate();
+            return;
+        }
+
+        // Estado == Reproduciendo, lógica normal
         if (espectro.Magnitudes.Length != _barras.Length)
         {
             _barras = new float[espectro.Magnitudes.Length];
@@ -74,13 +91,10 @@ public class VisualizerControl : Control
         }
 
         if (espectro.PulsoDetectado)
-        {
             _pulso = Math.Max(_pulso, 0.90f);
-        }
 
         ActualizarMetricas();
         ActualizarParticulas();
-
         _fase += 0.016f + _energiaSuavizada * 0.045f + _pulso * 0.010f;
         _fotograma++;
 
@@ -100,7 +114,7 @@ public class VisualizerControl : Control
         Rectangle area = new(0, 0, Width, Height);
         DibujarReticula(e.Graphics, area);
 
-        if (_barras.All(v => v < 0.006f))
+        if (_energiaSuavizada < 0.006f)
         {
             DibujarEstadoIdle(e.Graphics, area);
             base.OnPaint(e);

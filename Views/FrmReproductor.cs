@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using VisualBeatPlayer.Controllers;
 using VisualBeatPlayer.Models;
+using static VisualBeatPlayer.Views.VisualizerControl;
 
 namespace VisualBeatPlayer.Views;
 
@@ -477,7 +478,7 @@ public class FrmReproductor : Form, IReproductorView
         {
             Dock = DockStyle.Fill,
             Margin = new Padding(0),
-            Padding = new Padding(24, 8, 24, 16),
+            Padding = new Padding(24, 0, 24, 0),
             Radio = 0,
             MostrarBorde = false
         };
@@ -662,9 +663,9 @@ public class FrmReproductor : Form, IReproductorView
         _btnCargar.Click += (_, _) => AbrirDialogoCanciones();
         _btnQuitar.Click += (_, _) => _controller.QuitarCancion(_lstCanciones.SelectedIndex);
         _btnLimpiar.Click += (_, _) => _controller.LimpiarLista();
-        _btnPlay.Click += (_, _) => _controller.Reproducir();
-        _btnPause.Click += (_, _) => _controller.Pausar();
-        _btnStop.Click += (_, _) => _controller.Detener();
+        _btnPlay.Click += (_, _) => { _visualizador.Estado = EstadoVisualizador.Reproduciendo; _controller.Reproducir(); };
+        _btnPause.Click += (_, _) => { _visualizador.Estado = EstadoVisualizador.Pausado; _controller.Pausar(); };
+        _btnStop.Click += (_, _) => { _visualizador.Estado = EstadoVisualizador.Detenido; _controller.Detener(); };
         _btnSiguiente.Click += (_, _) => _controller.Siguiente();
         _btnAnterior.Click += (_, _) => _controller.Anterior();
         _btnModoVisual.Click += (_, _) =>
